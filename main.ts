@@ -8,6 +8,9 @@ import { join } from 'node:path';
 // immCode: imm 0 -> 0, 1 -> 1, 2 -> 2, 4 -> 3. Covers bytes 0x00..0x53.
 // Immediate lengths by immCode, hoisted so the hot loop never allocates.
 const IMM = [0, 1, 2, 4];
+// Execution limits: max steps and max output bytes per instance.
+const STEP_LIMIT = 1e6;
+const OUT_CAP = 65536;
 const T = '\x01\x122\x05\x07\x0b\x0c\x10\0\0\0\0\0\0\0\0\x0a\x0a\x0a\x0a\x0a\x0a\x0a\x06\x0a\x0a\x0a\x06\x0a\x0a\x0a\0\x0a\x0a\x0a\0\0\0\0\0\0\0\0\0\0\0\0\0!%%!\x01\0\0\0\0\0\0\0\0\0\0\0\x06\x09\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x05\x05\x02\x05';
 
 function run(p, inp) {
@@ -17,11 +20,11 @@ function run(p, inp) {
   const C = new Int32Array(64);
   let cp = 0;
   const M = new Int32Array(256);
-  const out = new Uint8Array(65536);
+  const out = new Uint8Array(OUT_CAP);
   let ol = 0, ip = 0, pc = 0, st = 0;
   const end = (code) => [out.subarray(0, ol), code];
   for (;;) {
-    if (st === 1e6) return end(10);
+    if (st === STEP_LIMIT) return end(10);
     if (pc < 0 || pc >= n) return end(9);
     const op = p[pc];
     const t = T.charCodeAt(op) || 0;
@@ -150,13 +153,13 @@ function run(p, inp) {
       }
       case 0x50: {
         const s = String(D[sp - 1]);
-        if (ol + s.length > 65536) return end(11);
+        if (ol + s.length > OUT_CAP) return end(11);
         sp--;
         for (let i = 0; i < s.length; i++) out[ol++] = s.charCodeAt(i);
         break;
       }
       case 0x51:
-        if (ol + 1 > 65536) return end(11);
+        if (ol + 1 > OUT_CAP) return end(11);
         out[ol++] = D[--sp] & 255;
         break;
       case 0x52:
