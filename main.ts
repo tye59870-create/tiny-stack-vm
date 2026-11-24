@@ -6,6 +6,8 @@ import { join } from 'node:path';
 
 // Opcode table: for byte b, char code c = 1 + immCode*16 + pops*4 + pushes (0 = no opcode).
 // immCode: imm 0 -> 0, 1 -> 1, 2 -> 2, 4 -> 3. Covers bytes 0x00..0x53.
+// Immediate lengths by immCode, hoisted so the hot loop never allocates.
+const IMM = [0, 1, 2, 4];
 const T = '\x01\x122\x05\x07\x0b\x0c\x10\0\0\0\0\0\0\0\0\x0a\x0a\x0a\x0a\x0a\x0a\x0a\x06\x0a\x0a\x0a\x06\x0a\x0a\x0a\0\x0a\x0a\x0a\0\0\0\0\0\0\0\0\0\0\0\0\0!%%!\x01\0\0\0\0\0\0\0\0\0\0\0\x06\x09\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x05\x05\x02\x05';
 
 function run(p, inp) {
@@ -25,7 +27,7 @@ function run(p, inp) {
     const t = T.charCodeAt(op) || 0;
     if (!t) return end(5);
     const v = t - 1;
-    const im = [0, 1, 2, 4][v >> 4];
+    const im = IMM[v >> 4];
     const pops = (v >> 2) & 3;
     const push = v & 3;
     if (pc + im >= n) return end(9);
